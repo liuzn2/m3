@@ -1082,45 +1082,71 @@ func TestDownsamplerAggregationWithRulesConfigRollupRulesIncreaseAdd(t *testing.
 }
 
 func TestDownsamplerAggregationWithRulesConfigRollupRuleAndDropPolicy(t *testing.T) {
+
 	gaugeMetric := testGaugeMetric{
 		tags: map[string]string{
-			nameTag:         "http_requests",
-			"app":           "nginx_edge",
-			"status_code":   "500",
-			"endpoint":      "/foo/bar",
-			"not_rolled_up": "not_rolled_up_value",
+			nameTag:                "nginx_ingress_controller_response_duration_seconds_bucket",
+			"aws_region":           "redacted",
+			"redacted_k8s_cluster": "redacted",
+			"controller_class":     "nginx",
+			"controller_namespace": "ingress-nginx",
+			"controller_pod":       "redacted",
+			"ingress":              "redacted",
+			"instance":             "redacted",
+			"job":                  "redacted",
+			"le":                   "10",
+			"method":               "POST",
+			//"namespace":            "redacted",
+			/*"path":                     "/api/(v1/feature-service/.*)",
+			"service":                  "feature-server",
+			"status":                   "429",
+			"redacted_cluster":           "redacted-production",*/
 		},
 		timedSamples: []testGaugeMetricTimedSample{
-			{value: 42},
-			{value: 64, offset: 5 * time.Second},
+			{value: 13, offset: 5 * time.Second},  // +13 (should not be accounted since is a reset)
+			{value: 27, offset: 10 * time.Second}, // +14
+			// Explicit no value.
+			{value: 42, offset: 20 * time.Second}, // +15
 		},
-		expectDropPolicyApplied: true,
+		expectDropPolicyApplied: false,
 	}
 	res := 5 * time.Second
 	ret := 30 * 24 * time.Hour
-	filter := fmt.Sprintf("%s:http_requests app:* status_code:* endpoint:*", nameTag)
+	filter := fmt.Sprintf("%s:nginx_ingress_controller_response_duration_seconds_bucket", nameTag)
 	testDownsampler := newTestDownsampler(t, testDownsamplerOptions{
 		rulesConfig: &RulesConfiguration{
-			MappingRules: []MappingRuleConfiguration{
-				{
-					Filter: filter,
-					Drop:   true,
-				},
-			},
+			MappingRules: []MappingRuleConfiguration{},
 			RollupRules: []RollupRuleConfiguration{
 				{
 					Filter: filter,
 					Transforms: []TransformConfiguration{
 						{
 							Transform: &TransformOperationConfiguration{
-								Type: transformation.PerSecond,
+								Type: transformation.Increase,
 							},
 						},
 						{
 							Rollup: &RollupOperationConfiguration{
-								MetricName:   "http_requests_by_status_code",
-								GroupBy:      []string{"app", "status_code", "endpoint"},
+								MetricName: "nginx_ingress_controller_request_duration_seconds_bucket_rollup_no_controller_job_instance",
+								GroupBy: []string{
+									"aws_region",
+									"ingress",
+									"controller_class",
+									"controller_namespace",
+									"le",
+									"method",
+									//"namespace",
+									/*"path",
+									"service",
+									"status",
+									"redacted_cluster",*/
+								},
 								Aggregations: []aggregation.Type{aggregation.Sum},
+							},
+						},
+						{
+							Transform: &TransformOperationConfiguration{
+								Type: transformation.Add,
 							},
 						},
 					},
@@ -1140,13 +1166,21 @@ func TestDownsamplerAggregationWithRulesConfigRollupRuleAndDropPolicy(t *testing
 			writes: []testExpectedWrite{
 				{
 					tags: map[string]string{
-						nameTag:               "http_requests_by_status_code",
-						string(rollupTagName): string(rollupTagValue),
-						"app":                 "nginx_edge",
-						"status_code":         "500",
-						"endpoint":            "/foo/bar",
+						nameTag:                "nginx_ingress_controller_request_duration_seconds_bucket_rollup_no_controller_job_instance",
+						string(rollupTagName):  string(rollupTagValue),
+						"aws_region":           "redacted",
+						"controller_class":     "nginx",
+						"controller_namespace": "ingress-nginx",
+						"ingress":              "redacted",
+						"le":                   "10",
+						"method":               "POST",
+						//"namespace":            "redacted",
+						/*"path":                 "/api/(v1/feature-service/.*)",
+						"service":              "feature-server",
+						"status":               "429",
+						"redacted_cluster":       "redacted-production",*/
 					},
-					values: []expectedValue{{value: 4.4}},
+					values: []expectedValue{{value: 14}, {value: 29, offset: 10 * time.Second}},
 					attributes: &storagemetadata.Attributes{
 						MetricsType: storagemetadata.AggregatedMetricsType,
 						Resolution:  res,
