@@ -22,6 +22,7 @@ package fs
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -193,7 +194,7 @@ func (s *fileSystemSource) Read(
 	for _, elem := range namespaces.Namespaces.Iter() {
 		namespace := elem.Value()
 		md := namespace.Metadata
-		if !md.Options().IndexOptions().Enabled() {
+		if !md.Options().IndexOptions().Enabled() || strings.HasPrefix(md.ID().String(), "downsampled")  {
 			// Not bootstrapping for index.
 			s.log.Info("bootstrapping for namespace disabled by options",
 				zap.String("ns", md.ID().String()))

@@ -22,6 +22,7 @@ package bootstrapper
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/m3db/m3/src/dbnode/storage/bootstrap"
 	"github.com/m3db/m3/src/dbnode/storage/bootstrap/result"
@@ -106,7 +107,7 @@ func (b baseBootstrapper) Bootstrap(
 		currNamespace.DataRunOptions.ShardTimeRanges = dataAvailable
 
 		// Prepare index if required.
-		if currNamespace.Metadata.Options().IndexOptions().Enabled() {
+		if currNamespace.Metadata.Options().IndexOptions().Enabled() && !strings.HasPrefix(currNamespace.Metadata.ID().String(), "downsampled") {
 			indexAvailable, err := b.src.AvailableIndex(currNamespace.Metadata,
 				currNamespace.IndexRunOptions.ShardTimeRanges.Copy(), cache,
 				currNamespace.IndexRunOptions.RunOptions)
@@ -187,7 +188,7 @@ func (b baseBootstrapper) Bootstrap(
 			// next bootstrapper, the final unfulfilled is simply what it could
 			// not fulfill.
 			finalResult.DataResult.SetUnfulfilled(currNamespace.DataResult.Unfulfilled().Copy())
-			if currNamespace.Metadata.Options().IndexOptions().Enabled() {
+			if currNamespace.Metadata.Options().IndexOptions().Enabled() && !strings.HasPrefix(currNamespace.Metadata.ID().String(), "downsampled") {
 				finalResult.IndexResult.SetUnfulfilled(currNamespace.IndexResult.Unfulfilled().Copy())
 			}
 
@@ -247,7 +248,7 @@ func (b baseBootstrapper) logSuccessAndDetermineCurrResultsUnfulfilledAndNextBoo
 			indexCurrFulfilled = result.NewShardTimeRanges()
 			indexUnfulfilled   = result.NewShardTimeRanges()
 		)
-		if currNamespace.Metadata.Options().IndexOptions().Enabled() {
+		if currNamespace.Metadata.Options().IndexOptions().Enabled() && !strings.HasPrefix(currNamespace.Metadata.ID().String(), "downsampled")  {
 			// Calculate bootstrap time ranges.
 			indexRequired := requestedNamespace.IndexRunOptions.ShardTimeRanges.Copy()
 			indexCurrRequested = currNamespace.IndexRunOptions.ShardTimeRanges.Copy()
@@ -285,7 +286,7 @@ func (b baseBootstrapper) logSuccessAndDetermineCurrResultsUnfulfilledAndNextBoo
 			zap.Duration("dataRangeFulfilled", dataRangeFulfilled),
 		}...)
 
-		if currNamespace.Metadata.Options().IndexOptions().Enabled() {
+		if currNamespace.Metadata.Options().IndexOptions().Enabled() && !strings.HasPrefix(currNamespace.Metadata.ID().String(), "downsampled")  {
 			_, _, indexRangeRequested := indexCurrRequested.MinMaxRange()
 			_, _, indexRangeFulfilled := indexCurrFulfilled.MinMaxRange()
 			successLogFields = append(successLogFields, []zapcore.Field{
@@ -320,7 +321,7 @@ func (b baseBootstrapper) logShardTimeRanges(
 			zap.Time("dataTo", dataMax),
 		}...)
 	}
-	if currNamespace.Metadata.Options().IndexOptions().Enabled() {
+	if currNamespace.Metadata.Options().IndexOptions().Enabled() && !strings.HasPrefix(currNamespace.Metadata.ID().String(), "downsampled")  {
 		indexShardTimeRanges := currNamespace.IndexRunOptions.ShardTimeRanges
 		indexMin, indexMax, indexRange := indexShardTimeRanges.MinMaxRange()
 		logFields = append(logFields, []zapcore.Field{
