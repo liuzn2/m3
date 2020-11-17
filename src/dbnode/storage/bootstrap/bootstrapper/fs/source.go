@@ -394,6 +394,10 @@ func (s *fileSystemSource) loadShardReadersDataIntoShardResult(
 	persistManager *bootstrapper.SharedPersistManager,
 	compactor *bootstrapper.SharedCompactor,
 ) {
+	if strings.HasPrefix(ns.ID().String(), "downsampled") {
+		return
+	}
+
 	var (
 		blockPool            = ropts.DatabaseBlockOptions().DatabaseBlockPool()
 		seriesCachePolicy    = ropts.SeriesCachePolicy()
