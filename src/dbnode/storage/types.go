@@ -650,6 +650,7 @@ type databaseShard interface {
 		blockReaders []fs.DataFileSetReader,
 		writer fs.StreamingWriter,
 		sourceBlockVolumes []shardBlockVolume,
+		onFlushSeries persist.OnFlushSeries,
 		opts AggregateTilesOptions,
 	) (int64, error)
 
@@ -1400,6 +1401,7 @@ type TileAggregator interface {
 		shardID uint32,
 		readers []fs.DataFileSetReader,
 		writer fs.StreamingWriter,
+		onFlushSeries persist.OnFlushSeries,
 	) (int64, error)
 }
 
