@@ -3,8 +3,6 @@ title: "Docker"
 weight: 1
 ---
 
-<!-- TODO: Fix dates. Cross-platform date generation is a pain, so maybe use Docker locally? See what Netlify supports, or maybe there is a Hugo variable, or create a shortcode -->
-
 ## Creating a Single Node M3DB Cluster with Docker
 
 This guide shows how to install and configure M3DB, create a single-node cluster, and read and write metrics to it.
@@ -64,8 +62,6 @@ When running the command above on Docker for Mac, Docker for Windows, and some L
 The single-node cluster Docker image uses this [sample configuration file](https://github.com/m3db/m3/blob/master/src/dbnode/config/m3dbnode-local-etcd.yml) by default.
 
 The file groups configuration into `coordinator` or `db` sections that represent the `M3Coordinator` and `M3DB` instances of single-node cluster.
-
-<!-- TODO: Replicate relevant sections -->
 
 {{% notice tip %}}
 You can find more information on configuring M3DB in the [operational guides section](/docs/operational_guide/).
@@ -192,8 +188,6 @@ The Docker command used above creates a Docker [persistent volume](https://docs.
 {{< /tabs >}}
 
 Placement initialization can take a minute or two. Once all the shards have the `AVAILABLE` state, the node has finished bootstrapping, and you should see the following messages in the node console output.
-
-<!-- TODO: Fix these timestamps -->
 
 ```shell
 {"level":"info","ts":1598367624.0117292,"msg":"bootstrap marking all shards as bootstrapped","namespace":"default","namespace":"default","numShards":64}
@@ -411,8 +405,6 @@ Below are some examples using the metrics written above.
 {{< tabs name="example_promql_regex" >}}
 {{% tab name="Linux" %}}
 
-<!-- TODO: Check this on Linux -->
-
 ```shell
 curl -X "POST" -G "{{% apiendpoint %}}query_range" \
   -d "query=third_avenue" \
@@ -474,8 +466,6 @@ curl -X "POST" -G "{{% apiendpoint %}}query_range" \
 
 {{< tabs name="example_promql_range" >}}
 {{% tab name="Linux" %}}
-
-<!-- TODO: Check Linux command -->
 
 ```shell
 curl -X "POST" -G "{{% apiendpoint %}}query_range" \
