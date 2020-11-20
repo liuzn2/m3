@@ -30,6 +30,7 @@ import (
 
 	"github.com/m3db/m3/src/dbnode/namespace"
 	"github.com/m3db/m3/src/dbnode/persist/fs/commitlog"
+	"github.com/m3db/m3/src/dbnode/persist/schema"
 	"github.com/m3db/m3/src/dbnode/sharding"
 	"github.com/m3db/m3/src/dbnode/storage/block"
 	dberrors "github.com/m3db/m3/src/dbnode/storage/errors"
@@ -941,12 +942,9 @@ func (d *db) ReadEncoded(
 	return n.ReadEncoded(ctx, id, start, end)
 }
 
-// batchProcessWideQuery runs the given query against the namespace index,
-// iterating in a batchwise fashion across all matching IDs, applying the given
-// IDBatchProcessor batch processing function to each ID discovered.
-func (d *db) batchProcessWideQuery(
+func (d *db) BatchProcessWideQuery(
 	ctx context.Context,
-	n databaseNamespace,
+	n WideNamespace,
 	query index.Query,
 	batchProcessor IDBatchProcessor,
 	opts index.WideQueryOptions,
@@ -994,7 +992,7 @@ func (d *db) WideQuery(
 	shards []uint32,
 	iterOpts index.IterationOptions,
 ) ([]xio.WideEntry, error) { // nolint FIXME: change when exact type known.
-	n, err := d.namespaceFor(namespace)
+	n, err := d.WideNamespaceFor(namespace)
 	if err != nil {
 		d.metrics.unknownNamespaceRead.Inc(1)
 		return nil, err
@@ -1030,7 +1028,7 @@ func (d *db) WideQuery(
 	indexChecksumProcessor := func(batch *ident.IDBatch) error {
 		streamedWideEntries = streamedWideEntries[:0]
 		for _, id := range batch.IDs {
-			streamedWideEntry, err := d.fetchWideEntries(ctx, n, id, start)
+			streamedWideEntry, err := d.FetchWideEntry(ctx, n, id,  start, nil)
 			if err != nil {
 				return err
 			}
@@ -1050,7 +1048,7 @@ func (d *db) WideQuery(
 		return nil
 	}
 
-	err = d.batchProcessWideQuery(ctx, n, query, indexChecksumProcessor, opts)
+	err = d.BatchProcessWideQuery(ctx, n, query, indexChecksumProcessor, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1058,11 +1056,12 @@ func (d *db) WideQuery(
 	return collectedChecksums, nil
 }
 
-func (d *db) fetchWideEntries(
+func (d *db) FetchWideEntry(
 	ctx context.Context,
-	ns databaseNamespace,
+	ns WideNamespace,
 	id ident.ID,
 	start time.Time,
+	filter schema.WideEntryFilter,
 ) (block.StreamedWideEntry, error) {
 	ctx, sp, sampled := ctx.StartSampledTraceSpan(tracepoint.DBWideEntry)
 	if sampled {
@@ -1075,7 +1074,7 @@ func (d *db) fetchWideEntries(
 
 	defer sp.Finish()
 
-	return ns.FetchWideEntry(ctx, id, start)
+	return ns.FetchWideEntry(ctx, id, start, filter)
 }
 
 func (d *db) FetchBlocks(
@@ -1244,6 +1243,16 @@ func (d *db) FlushState(
 		return fileOpState{}, err
 	}
 	return n.FlushState(shardID, blockStart)
+}
+
+func (d *db) WideNamespaceFor(namespace ident.ID) (WideNamespace, error) {
+	ns, err := d.namespaceFor(namespace)
+	if err != nil {
+		d.metrics.unknownNamespaceRead.Inc(1)
+		return nil, err
+	}
+
+	return ns, nil
 }
 
 func (d *db) namespaceFor(namespace ident.ID) (databaseNamespace, error) {

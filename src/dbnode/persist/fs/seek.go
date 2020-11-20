@@ -477,6 +477,7 @@ func (s *seeker) SeekIndexEntry(
 //        far we know it does not exist.
 func (s *seeker) SeekWideEntry(
 	id ident.ID,
+	filter schema.WideEntryFilter,
 	resources ReusableSeekerResources,
 ) (xio.WideEntry, error) {
 	offset, err := s.indexLookup.getNearestIndexFileOffset(id, resources)
@@ -506,6 +507,13 @@ func (s *seeker) SeekWideEntry(
 			// Should never happen, either something is really wrong with the code or
 			// the file on disk was corrupted.
 			return xio.WideEntry{}, instrument.InvariantErrorf(err.Error())
+		}
+
+		if filter != nil && filter(entry) {
+			// NB: if filtering out, return empty entry and nil.
+			resources.decodeIndexEntryBytesPool.Put(entry.ID)
+			resources.decodeIndexEntryBytesPool.Put(entry.EncodedTags)
+			return xio.WideEntry{}, nil
 		}
 
 		if status != xmsgpack.MatchedLookupStatus {
