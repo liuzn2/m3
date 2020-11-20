@@ -86,7 +86,7 @@ type WideEntry struct {
 }
 
 // WideEntryFilter provides a filter for wide entries.
-type WideEntryFilter func(entry WideEntry) bool
+type WideEntryFilter func(entry WideEntry) (bool, error)
 
 // IndexEntryHasher hashes an index entry.
 type IndexEntryHasher interface {

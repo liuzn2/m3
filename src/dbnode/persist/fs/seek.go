@@ -509,11 +509,17 @@ func (s *seeker) SeekWideEntry(
 			return xio.WideEntry{}, instrument.InvariantErrorf(err.Error())
 		}
 
-		if filter != nil && filter(entry) {
-			// NB: if filtering out, return empty entry and nil.
-			resources.decodeIndexEntryBytesPool.Put(entry.ID)
-			resources.decodeIndexEntryBytesPool.Put(entry.EncodedTags)
-			return xio.WideEntry{}, nil
+		if filter != nil {
+			filtered, err := filter(entry)
+			if err != nil || filtered {
+				// NB: this entry is not being taken, can free memory.
+				resources.decodeIndexEntryBytesPool.Put(entry.ID)
+				resources.decodeIndexEntryBytesPool.Put(entry.EncodedTags)
+				if err != nil {
+					return xio.WideEntry{}, err
+				}
+				return xio.WideEntry{}, nil
+			}
 		}
 
 		if status != xmsgpack.MatchedLookupStatus {
